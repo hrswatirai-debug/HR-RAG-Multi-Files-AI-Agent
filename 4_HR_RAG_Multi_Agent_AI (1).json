@@ -1,0 +1,2036 @@
+{
+  "name": "4_HR_RAG_Multi_Agent_AI",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "70e2ec93-ce2e-47ad-b8f7-1ff3c656fb03",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -128,
+        -816
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const err = $input.first().json;\nconst workflow_name = err.workflow && err.workflow.name ? err.workflow.name : 'unknown';\nconst node_name = err.execution && err.execution.error && err.execution.error.node ? err.execution.error.node.name : '';\nconst error_message = err.execution && err.execution.error && err.execution.error.message ? err.execution.error.message : JSON.stringify(err.execution ? err.execution.error : {});\n\n// Classify error type for triage\nconst msg = (error_message || '').toLowerCase();\nlet error_category = 'other';\nif (msg.includes('rate limit') || msg.includes('429') || msg.includes('too many')) error_category = 'rate_limit';\nelse if (msg.includes('auth') || msg.includes('401') || msg.includes('403') || msg.includes('unauthorized') || msg.includes('forbidden')) error_category = 'auth';\nelse if (msg.includes('timeout') || msg.includes('etimedout') || msg.includes('econnreset')) error_category = 'timeout';\nelse if (msg.includes('parse') || msg.includes('json') || msg.includes('syntax')) error_category = 'parse';\nelse if (msg.includes('not found') || msg.includes('404')) error_category = 'not_found';\nelse if (msg.includes('invalid') || msg.includes('validation')) error_category = 'validation';\n\nreturn [{\n  json: {\n    workflow_name,\n    node_name,\n    error_message,\n    error_category,\n    file_id: null\n  }\n}];"
+      },
+      "id": "b0d581f1-999e-4d9b-939f-afca9dfa6246",
+      "name": "Format + Classify Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        48,
+        -816
+      ]
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "error_log",
+          "mode": "list",
+          "cachedResultName": "error_log"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "workflow_name": "={{ $json.workflow_name }}",
+            "node_name": "={{$json.node_name}}",
+            "error_message": "={{ $json.error_message }}",
+            "error_category": "={{ $json.error_category }}",
+            "file_id": "={{ $json.file_id }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "node_name",
+              "displayName": "node_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error_message",
+              "displayName": "error_message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error_category",
+              "displayName": "error_category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "file_id",
+              "displayName": "file_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "retry_count",
+              "displayName": "retry_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "c05a712f-637c-47c0-a93f-5ebef640fd5f",
+      "name": "Log Error",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        224,
+        -816
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JjJP73gAngM80C6c",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "driveFolderId",
+              "value": "1kwn22xKJhdeYL6S88vDRUuhjhza_gpZ8",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "pineconeIndex",
+              "value": "hr-rag-prod",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "21f7aa2d-e803-4255-b24c-cb5b7fbcae30",
+      "name": "Set Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -912,
+        -400
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "59c8a5db-9dc8-4b83-8f88-ecb4538a2db0",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -624,
+        -672
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 2 * * *"
+            }
+          ]
+        }
+      },
+      "id": "d7e80df4-0a9d-4a0f-8bf6-17690b2be40a",
+      "name": "Schedule Daily 2AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -544,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "=",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "={{ $('Set Config').item.json.driveFolderId }}",
+            "mode": "id"
+          }
+        },
+        "options": {
+          "fields": [
+            "*"
+          ]
+        }
+      },
+      "id": "44a27ead-768d-4e9d-b4f2-775a1afbb6a8",
+      "name": "List Files",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -416,
+        -432
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "oNVLLcvq6DBlNeiZ",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "cb835ce3-4726-4126-9187-6b146ada5ff1",
+      "name": "Split In Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -176,
+        -384
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "or",
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.mimeType }}",
+              "rightValue": "application/pdf",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.mimeType }}",
+              "rightValue": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "c3",
+              "leftValue": "={{ $json.mimeType }}",
+              "rightValue": "text/plain",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "c4",
+              "leftValue": "={{ $json.mimeType }}",
+              "rightValue": "application/vnd.google-apps.document",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1fdc74e5-a586-48c6-8dc8-78e12777ddc7",
+      "name": "IF Valid File Type",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        128,
+        -384
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO documents (file_id, file_name, document_type, status) VALUES ($1, $2, 'Unsupported', 'skipped') ON CONFLICT (file_id) DO UPDATE SET status='skipped';",
+        "options": {
+          "queryReplacement": "={{ $json.id }},={{ $json.name }}"
+        }
+      },
+      "id": "47618958-de34-4e7d-8bb6-af4de7a81f88",
+      "name": "Log Skipped File",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        352,
+        -224
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JjJP73gAngM80C6c",
+          "name": "Postgres account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {
+          "googleFileConversion": {
+            "conversion": {
+              "docsToFormat": "text/plain"
+            }
+          }
+        }
+      },
+      "id": "10ca80bf-176d-452d-8382-2034a8870832",
+      "name": "Download File",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        336,
+        -592
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "oNVLLcvq6DBlNeiZ",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const file = $input.first().json;\nconst name = (file.name || '').toLowerCase();\n\n// Document type classification\nlet document_type = 'General';\nif (name.includes('contract') || name.includes('agreement') || name.includes('nda')) document_type = 'Contract';\nelse if (name.includes('policy')) document_type = 'Policy';\nelse if (name.includes('manual') || name.includes('handbook')) document_type = 'Manual';\nelse if (name.includes('compliance') || name.includes('sop') || name.includes('audit')) document_type = 'Compliance';\nelse if (name.includes('benefit') || name.includes('leave') || name.includes('insurance')) document_type = 'Benefits';\n\n// Use Google Drive's pre-computed hash — no crypto module needed\n// Fallback chain: sha256 → md5 → fileId+modifiedTime as pseudo-hash\nconst file_hash = file.sha256Checksum \n  || file.md5Checksum \n  || (file.id + '_' + file.modifiedTime).replace(/[^a-zA-Z0-9]/g, '');\n\nreturn [{\n  json: {\n    file_id: file.id,\n    file_name: file.name,\n    mime_type: file.mimeType,\n    document_type,\n    file_hash,\n    modified_time: file.modifiedTime,\n    upload_date: new Date().toISOString(),\n    source_url: file.webViewLink || 'https://drive.google.com/file/d/' + file.id + '/view'\n  },\n  binary: $input.first().binary\n}];"
+      },
+      "id": "f3773a2d-f919-4466-9275-61ad2a570e95",
+      "name": "Extract Metadata + Hash",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        -656
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT file_hash, status\n  FROM documents\n WHERE file_id = '{{ $json.file_id }}';",
+        "options": {
+          "replaceEmptyStrings": true
+        }
+      },
+      "id": "ca73585e-2728-439b-a980-91b35faa0bb8",
+      "name": "Check Existing Hash",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        800,
+        -640
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "JjJP73gAngM80C6c",
+          "name": "Postgres account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const meta = $('Extract Metadata + Hash').first().json;\nconst existing = $input.first().json;\n\n// If hash matches and status is 'indexed', skip entirely\nconst needsProcessing = !(existing && existing.file_hash === meta.file_hash && existing.status === 'indexed');\n\nreturn [{\n  json: {\n    ...meta,\n    needs_processing: needsProcessing,\n    existing_status: existing ? existing.status : 'new'\n  },\n  binary: $('Extract Metadata + Hash').first().binary\n}];"
+      },
+      "id": "018d0982-8833-45cc-aa64-1cffb8c99e8a",
+      "name": "Evaluate Dedup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        -640
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.needs_processing }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9e52a6f1-8264-4850-8a72-46d0f9e15ba7",
+      "name": "IF Needs Processing",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1216,
+        -640
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE documents SET status='indexed', last_indexed_at = NOW() WHERE file_id = $1;",
+        "options": {
+          "queryReplacement": "={{ $json.file_id }}"
+        }
+      },
+      "id": "9eecae0d-e5c6-4345-9e1c-0b1e2e7c9bb9",
+      "name": "Mark Unchanged",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1408,
+        -416
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JjJP73gAngM80C6c",
+          "name": "Postgres account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "documents",
+          "mode": "list",
+          "cachedResultName": "documents"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "file_id": "={{ $json.file_id }}",
+            "file_name": "={{ $json.file_name }}",
+            "document_type": "={{ $json.document_type }}",
+            "modified_time": "={{ $json.modified_time }}",
+            "file_hash": "={{ $json.file_hash }}",
+            "status": "processing"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "file_id",
+              "displayName": "file_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "file_name",
+              "displayName": "file_name",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "document_type",
+              "displayName": "document_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "modified_time",
+              "displayName": "modified_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "upload_date",
+              "displayName": "upload_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "chunk_count",
+              "displayName": "chunk_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "error_message",
+              "displayName": "error_message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "file_hash",
+              "displayName": "file_hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "last_indexed_at",
+              "displayName": "last_indexed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "skipOnConflict": true
+        }
+      },
+      "id": "2d7b6b40-e407-4fc5-b8d1-ac5d1483ef63",
+      "name": "Register Processing",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1440,
+        -624
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JjJP73gAngM80C6c",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "hr-rag-prod",
+          "mode": "list"
+        },
+        "options": {}
+      },
+      "id": "0144f506-2aa4-4469-9ce4-3e79b7f775a5",
+      "name": "Pinecone Upsert",
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        1872,
+        -624
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "pineconeApi": {
+          "id": "dIpxJPfXcCMOrxZl",
+          "name": "Pinecone account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "dimensions": 1536
+        }
+      },
+      "id": "3c017240-c496-435b-872e-9ad232d1fec4",
+      "name": "Embeddings OpenAI",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1808,
+        -384
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "HKNAOPtx98yVM94x",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "textSplittingMode": "custom",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "file_id",
+                "value": "={{ $('Extract Metadata + Hash').item.json.file_id }}"
+              },
+              {
+                "name": "file_name",
+                "value": "={{ $('Extract Metadata + Hash').item.json.file_name }}"
+              },
+              {
+                "name": "document_type",
+                "value": "={{ $('Extract Metadata + Hash').item.json.document_type }}"
+              },
+              {
+                "name": "modified_time",
+                "value": "={{ $('Extract Metadata + Hash').item.json.modified_time }}"
+              },
+              {
+                "name": "source_url",
+                "value": "={{ $('Extract Metadata + Hash').item.json.source_url }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "f03fc421-d3fd-4883-93db-6ac8f564e3e8",
+      "name": "Default Data Loader",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        1984,
+        -384
+      ]
+    },
+    {
+      "parameters": {
+        "chunkSize": 800,
+        "chunkOverlap": 150,
+        "options": {}
+      },
+      "id": "a2071a8c-2c74-4811-aca8-a9fb8fbddbb9",
+      "name": "Text Splitter",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        2080,
+        -176
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "documents",
+          "mode": "list",
+          "cachedResultName": "documents"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "file_id": "={{ $('Extract Metadata + Hash').item.json.file_id}}",
+            "status": "indexed",
+            "chunk_count": "={{ ($('Pinecone Upsert').item.json.documentsAdded || $('Pinecone Upsert').item.json.length || 1) }}",
+            "last_indexed_at": "={{ $now.toISOString() }}"
+          },
+          "matchingColumns": [
+            "file_id"
+          ],
+          "schema": [
+            {
+              "id": "file_id",
+              "displayName": "file_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "file_name",
+              "displayName": "file_name",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "document_type",
+              "displayName": "document_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "modified_time",
+              "displayName": "modified_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "upload_date",
+              "displayName": "upload_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "chunk_count",
+              "displayName": "chunk_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error_message",
+              "displayName": "error_message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "file_hash",
+              "displayName": "file_hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "last_indexed_at",
+              "displayName": "last_indexed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "7e204363-4ec7-489d-adac-96ee20257c86",
+      "name": "Mark Indexed",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        2192,
+        -624
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JjJP73gAngM80C6c",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hr-query",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "d4453365-0c0b-46b7-bfd1-642cc747dec7",
+      "name": "Webhook Query In",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        352
+      ],
+      "webhookId": "c0d1f337-8ceb-4968-806a-6bd19f3eb6dd"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\n// Handle multiple possible request structures\nlet query = '';\nif (input.body && typeof input.body === 'object' && input.body.query) {\n  query = input.body.query;\n} else if (input.query) {\n  query = input.query;\n} else if (input.params && input.params.query) {\n  query = input.params.query;\n} else if (typeof input.body === 'string') {\n  // Sometimes body is sent as a JSON string\n  try {\n    const parsed = JSON.parse(input.body);\n    query = parsed.query || '';\n  } catch (e) {\n    query = input.body;\n  }\n}\n\nquery = (query || '').toString().trim();\nif (!query) {\n  throw new Error('Missing query field in request body. Received: ' + JSON.stringify(input).substring(0, 200));\n}\n\n// Normalize for cache key (lowercase, collapse whitespace)\nconst normalized = query.toLowerCase().replace(/\\s+/g, ' ').trim();\n\n// Simple deterministic hash using string manipulation (no crypto module)\nfunction simpleHash(str) {\n  let hash = 0;\n  for (let i = 0; i < str.length; i++) {\n    const char = str.charCodeAt(i);\n    hash = ((hash << 5) - hash) + char;\n    hash = hash & hash;\n  }\n  return (hash >>> 0).toString(16).padStart(8, '0') + \n         Buffer.from(str).toString('base64').replace(/[^a-zA-Z0-9]/g, '').substring(0, 16);\n}\n\nconst query_hash = simpleHash(normalized).substring(0, 32);\n\nreturn [{ json: { query, query_hash, t_start: Date.now() } }];"
+      },
+      "id": "88e85c32-e952-4a03-a835-6214f76aaad7",
+      "name": "Parse + Hash",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT response_json, hit_count FROM query_cache WHERE query_hash = $1 AND expires_at > NOW();",
+        "options": {
+          "queryReplacement": "={{ $json.query_hash }}"
+        }
+      },
+      "id": "c5190247-6cfe-4437-bf7c-0b283ee4ac23",
+      "name": "Cache Lookup",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        432,
+        352
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "JjJP73gAngM80C6c",
+          "name": "Postgres account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.response_json }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3b91ac30-3e92-42cf-8b77-769e79edf4d5",
+      "name": "IF Cache Hit",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        656,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE query_cache SET hit_count = hit_count + 1, last_hit_at = NOW() WHERE query_hash = $1 RETURNING response_json;",
+        "options": {
+          "queryReplacement": "={{ $('Parse + Hash').first().json.query_hash }}"
+        }
+      },
+      "id": "fa3a98c1-c272-4c33-b0f0-f1cf842d39a9",
+      "name": "Increment Cache Hit",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        864,
+        208
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JjJP73gAngM80C6c",
+          "name": "Postgres account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.response_json;\nconst cached = typeof raw === 'string' ? JSON.parse(raw) : raw;\nconst t_start = $('Parse + Hash').first().json.t_start;\n\nreturn [{\n  json: {\n    ...cached,\n    cache_hit: true,\n    latency_ms: Date.now() - t_start,\n    _log: {\n      query: $('Parse + Hash').first().json.query,\n      query_hash: $('Parse + Hash').first().json.query_hash,\n      chunks_retrieved: 0,\n      doc_types_searched: []\n    }\n  }\n}];"
+      },
+      "id": "0607e1e3-b27f-424c-93e9-82a9dd5fe912",
+      "name": "Shape Cached Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Classify this HR question into one or more relevant document categories.\n\nAvailable categories: Policy, Contract, Manual, Compliance, Benefits, General\n\nReturn ONLY a valid JSON array of strings, like: [\"Policy\",\"Benefits\"]\nNo prose, no markdown fences, just the raw JSON array.\n\nIf unsure, return all categories: [\"Policy\",\"Contract\",\"Manual\",\"Compliance\",\"Benefits\",\"General\"]",
+              "role": "system"
+            },
+            {
+              "content": "=={{ $json.query }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e7bf7dca-3f98-4b51-a023-258e75968591",
+      "name": "Classify Doc Types",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        864,
+        496
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "credentials": {
+        "openAiApi": {
+          "id": "HKNAOPtx98yVM94x",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.message.content.trim();\nlet docTypes;\ntry {\n  docTypes = JSON.parse(raw);\n  if (!Array.isArray(docTypes) || docTypes.length === 0) throw new Error('empty');\n} catch(e) {\n  docTypes = ['Policy','Contract','Manual','Compliance','Benefits','General'];\n}\nconst valid = ['Policy','Contract','Manual','Compliance','Benefits','General'];\ndocTypes = docTypes.filter(t => valid.includes(t));\nif (!docTypes.length) docTypes = valid;\n\nreturn [{\n  json: {\n    query: $('Parse + Hash').first().json.query,\n    query_hash: $('Parse + Hash').first().json.query_hash,\n    t_start: $('Parse + Hash').first().json.t_start,\n    doc_types: docTypes\n  }\n}];"
+      },
+      "id": "fb84a102-88af-4d39-a815-18e33e005552",
+      "name": "Parse Doc Types",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1136,
+        464
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/embeddings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"text-embedding-3-small\",\n  \"input\": {{ JSON.stringify($json.query) }},\n  \"dimensions\": 1536\n}",
+        "options": {}
+      },
+      "id": "df7fece9-03e8-4bb0-9aa9-0f16393222a9",
+      "name": "Embed Query",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1312,
+        496
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "credentials": {
+        "openAiApi": {
+          "id": "HKNAOPtx98yVM94x",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const embedding = $input.first().json.data[0].embedding;\nconst ctx = $('Parse Doc Types').first().json;\nreturn [{\n  json: {\n    ...ctx,\n    vector: embedding,\n    filter: { document_type: { '$in': ctx.doc_types } }\n  }\n}];"
+      },
+      "id": "2c95a465-aba9-46f4-816c-b72584c15bf6",
+      "name": "Build Pinecone Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1536,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://hr-rag-prod-n6hzj30.svc.aped-4627-b74a.pinecone.io/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pineconeApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"namespace\": \"\",\n  \"vector\": {{ JSON.stringify($json.vector) }},\n  \"topK\": 15,\n  \"includeMetadata\": true,\n  \"filter\": {{ JSON.stringify($json.filter) }}\n}",
+        "options": {}
+      },
+      "id": "31347bd0-86b6-4d61-a286-6abac39f5c46",
+      "name": "Pinecone Query",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1744,
+        496
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "credentials": {
+        "pineconeApi": {
+          "id": "dIpxJPfXcCMOrxZl",
+          "name": "Pinecone account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Deduplicate adjacent chunks from the same file, keep top N candidates\nconst resp = $input.first().json;\nconst matches = resp.matches || [];\n\n// Group by file_id + chunk_index proximity (collapse consecutive chunks)\nconst seen = new Set();\nconst unique = [];\nfor (const m of matches) {\n  const fileId = m.metadata?.file_id || m.id;\n  const chunkIdx = m.metadata?.loc?.lines?.from || 0;\n  const key = `${fileId}_${Math.floor(chunkIdx / 2)}`;\n  if (seen.has(key)) continue;\n  seen.add(key);\n  unique.push({\n    id: m.id,\n    score: m.score || 0,\n    content: m.metadata?.text || m.metadata?.pageContent || '',\n    file_name: m.metadata?.file_name || 'unknown',\n    document_type: m.metadata?.document_type || 'General',\n    source_url: m.metadata?.source_url || ''\n  });\n}\n\nconst ctx = $('Build Pinecone Query').first().json;\nreturn [{\n  json: {\n    query: ctx.query,\n    query_hash: ctx.query_hash,\n    t_start: ctx.t_start,\n    doc_types: ctx.doc_types,\n    candidates: unique.slice(0, 10)  // top 10 for reranking\n  }\n}];"
+      },
+      "id": "d097c5df-6e8d-4cb9-9652-e1e301807820",
+      "name": "Deduplicate Chunks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1968,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are a relevance-ranking assistant. Score each document chunk on how relevant it is to the user's query, on a scale of 0-10.\n\nReturn ONLY a JSON array of numbers, in the same order as the chunks given. No prose, no markdown.\n\nExample: [9, 7, 4, 2, 1]",
+              "role": "system"
+            },
+            {
+              "content": "=={{ \"QUERY: \" + $json.query + \"\\n\\nCHUNKS:\\n\" + $json.candidates.map((c, i) => \"[\" + i + \"] \" + c.content.substring(0, 300)).join(\"\\n\\n\") }}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 200,
+          "temperature": 0
+        }
+      },
+      "id": "8244e450-4da4-4c9b-bd1d-f603e4aeee2f",
+      "name": "LLM Rerank",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        2160,
+        448
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "credentials": {
+        "openAiApi": {
+          "id": "HKNAOPtx98yVM94x",
+          "name": "OpenAI account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Deduplicate Chunks').first().json;\nconst rerankRaw = $input.first().json?.message?.content || '[]';\n\nlet scores;\ntry {\n  scores = JSON.parse(rerankRaw.trim());\n  if (!Array.isArray(scores)) throw new Error('not array');\n} catch(e) {\n  // Fallback: use original Pinecone order\n  scores = ctx.candidates.map((_, i) => 10 - i);\n}\n\n// Attach rerank scores and re-sort\nconst scored = ctx.candidates.map((c, i) => ({\n  ...c,\n  rerank_score: scores[i] !== undefined ? scores[i] : 0\n})).sort((a, b) => b.rerank_score - a.rerank_score);\n\n// Hardcoded topN = 5 (replaces broken Set Config1 reference)\nconst topN = 5;\nconst top = scored.slice(0, topN);\n\n// Confidence based on top rerank score (0-10 scale)\nconst topScore = top[0]?.rerank_score || 0;\nlet confidence = 'Low';\nif (topScore >= 8) confidence = 'High';\nelse if (topScore >= 5) confidence = 'Medium';\n\nconst contextBlock = top.map((c, i) =>\n  `[SOURCE ${i+1}: ${c.file_name} | Type: ${c.document_type} | Relevance: ${c.rerank_score}/10]\\n${c.content}\\n---`\n).join('\\n\\n');\n\nconst sources = [...new Set(top.map(c => c.file_name))];\n\nreturn [{\n  json: {\n    query: ctx.query,\n    query_hash: ctx.query_hash,\n    t_start: ctx.t_start,\n    doc_types: ctx.doc_types,\n    context: contextBlock || '(no relevant documents found)',\n    sources,\n    confidence,\n    chunks_retrieved: top.length,\n    low_confidence: confidence === 'Low'\n  }\n}];"
+      },
+      "id": "5fc56ed3-0c44-4309-93ea-617d358bb89c",
+      "name": "Build Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2416,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are the HR Knowledge Assistant. Answer ONLY from the retrieved document excerpts provided.\n\nSTRICT RULES:\n1. Every factual statement MUST be grounded in the provided SOURCES.\n2. If the sources do not contain the answer, set answer_found=false and respond: \"This information is not available in the current HR documents. Please contact the HR department.\"\n3. Cite every claim inline using [Source: filename].\n4. If sources conflict, present both versions and flag the conflict.\n5. For legal-interpretation questions, append \"This is a policy summary, not legal advice.\"\n6. Answer in the same language as the question.\n7. Never fabricate policy numbers, dates, or amounts.\n\nRETURN ONLY VALID JSON — no prose outside JSON, no markdown fences:\n{\n  \"answer\": \"<2-6 sentences with inline [Source: X]>\",\n  \"sources\": [\"file1.pdf\"],\n  \"confidence\": \"High|Medium|Low\",\n  \"answer_found\": true,\n  \"follow_up_suggestions\": [\"optional clarifying question\"]\n}",
+              "role": "system"
+            },
+            {
+              "content": "==QUESTION: {{ $json.query }}\n\nRETRIEVER CONFIDENCE: {{ $json.confidence }}\n\n===== RETRIEVED CONTEXT =====\n{{ $json.context }}\n===== END CONTEXT ====="
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 800,
+          "temperature": 0.1
+        }
+      },
+      "id": "06994cce-2a79-4d21-b9ef-8f5537bf43ee",
+      "name": "LLM Answer",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        2624,
+        496
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "credentials": {
+        "openAiApi": {
+          "id": "HKNAOPtx98yVM94x",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.message.content;\nconst ctx = $('Build Context').first().json;\n\nlet parsed;\ntry {\n  parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;\n} catch(e) {\n  parsed = {\n    answer: 'I could not generate a valid response. Please try again.',\n    sources: [],\n    confidence: 'Low',\n    answer_found: false,\n    follow_up_suggestions: []\n  };\n}\n\n// Citation enforcement: positive answer MUST cite sources\nif (parsed.answer_found && (!parsed.sources || parsed.sources.length === 0)) {\n  parsed = {\n    answer: 'This information is not available in the current HR documents. Please contact the HR department.',\n    sources: [],\n    confidence: 'Low',\n    answer_found: false,\n    follow_up_suggestions: []\n  };\n}\n\nconst response = {\n  answer: parsed.answer,\n  sources: parsed.sources || [],\n  confidence: parsed.confidence || ctx.confidence,\n  answer_found: parsed.answer_found !== false,\n  follow_up_suggestions: parsed.follow_up_suggestions || [],\n  cache_hit: false,\n  latency_ms: Date.now() - ctx.t_start\n};\n\nreturn [{\n  json: {\n    ...response,\n    _log: {\n      query: ctx.query,\n      query_hash: ctx.query_hash,\n      chunks_retrieved: ctx.chunks_retrieved,\n      doc_types_searched: ctx.doc_types\n    }\n  }\n}];"
+      },
+      "id": "a2f2b62b-e0d1-4189-97a2-4dd336fa8011",
+      "name": "Validate Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2912,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "query_cache",
+          "mode": "list",
+          "cachedResultName": "query_cache"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "query_hash": "={{ $json._log.query_hash }}",
+            "query_text": "={{ $json._log.query }}",
+            "response_json": "={{ JSON.stringify({ answer: $json.answer, sources: $json.sources, confidence: $json.confidence, answer_found: $json.answer_found, follow_up_suggestions: $json.follow_up_suggestions }) }}",
+            "expires_at": "={{ new Date(Date.now() + 3600 * 1000).toISOString() }}",
+            "last_hit_at": "={{ new Date().toISOString() }}",
+            "hit_count": 0
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "query_hash",
+              "displayName": "query_hash",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "query_text",
+              "displayName": "query_text",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "response_json",
+              "displayName": "response_json",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "hit_count",
+              "displayName": "hit_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "expires_at",
+              "displayName": "expires_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_hit_at",
+              "displayName": "last_hit_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "skipOnConflict": true
+        }
+      },
+      "id": "2180755c-e5ab-4818-987e-2beb197f4339",
+      "name": "Cache Write",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        3072,
+        496
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JjJP73gAngM80C6c",
+          "name": "Postgres account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "query_log",
+          "mode": "list",
+          "cachedResultName": "query_log"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "answer_found": "={{ $('Validate Response').item.json.answer_found }}",
+            "cache_hit": "={{ $('Validate Response').item.json.cache_hit}}",
+            "latency_ms": "={{ Date.now() - $('Parse + Hash').item.json.t_start }}",
+            "chunks_retrieved": "={{ $('Validate Response').item.json._log.chunks_retrieved}}",
+            "query_text": "={{ $('Validate Response').item.json._log.query }}",
+            "query_hash": "={{ $('Validate Response').item.json._log.query_hash }}",
+            "response": "={{ $('Validate Response').item.json.answer }}",
+            "confidence": "={{ $('Validate Response').item.json.confidence }}",
+            "sources_cited": "={{ $('Validate Response').item.json.sources}}",
+            "doc_types_searched": "={{ $('Validate Response').item.json._log.doc_types_searched}}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "query_text",
+              "displayName": "query_text",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "query_hash",
+              "displayName": "query_hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "response",
+              "displayName": "response",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "confidence",
+              "displayName": "confidence",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "answer_found",
+              "displayName": "answer_found",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sources_cited",
+              "displayName": "sources_cited",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "array",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "latency_ms",
+              "displayName": "latency_ms",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cache_hit",
+              "displayName": "cache_hit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "chunks_retrieved",
+              "displayName": "chunks_retrieved",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "doc_types_searched",
+              "displayName": "doc_types_searched",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "array",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "fcc42361-9084-45ed-9d84-76348b8c2dbf",
+      "name": "Log Query",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        3232,
+        272
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JjJP73gAngM80C6c",
+          "name": "Postgres account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  answer: $('Validate Response').item.json.answer,\n  sources: $('Validate Response').item.json.sources,\n  confidence: $('Validate Response').item.json.confidence,\n  answer_found: $('Validate Response').item.json.answer_found,\n  follow_up_suggestions: $('Validate Response').item.json.follow_up_suggestions,\n  cache_hit: $('Validate Response').item.json.cache_hit || false,\n  latency_ms: Date.now() - $('Parse + Hash').item.json.t_start\n}) }}",
+        "options": {}
+      },
+      "id": "dedd5f17-a6d9-49dc-a118-245b80aa3a73",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        3504,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Re-merge the binary and metadata from upstream nodes\nconst meta = $('Extract Metadata + Hash').first().json;\nconst binary = $('Extract Metadata + Hash').first().binary;\n\nreturn [{\n  json: meta,\n  binary: binary\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1632,
+        -624
+      ],
+      "id": "f42ae0ec-af47-400a-83b0-ec195b960f6b",
+      "name": "Restore Binary"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Format + Classify Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format + Classify Error": {
+      "main": [
+        [
+          {
+            "node": "Log Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Config": {
+      "main": [
+        [
+          {
+            "node": "List Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Daily 2AM": {
+      "main": [
+        [
+          {
+            "node": "Set Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Files": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split In Batches": {
+      "main": [
+        [],
+        [
+          {
+            "node": "IF Valid File Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Valid File Type": {
+      "main": [
+        [
+          {
+            "node": "Download File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Skipped File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Skipped File": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download File": {
+      "main": [
+        [
+          {
+            "node": "Extract Metadata + Hash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Metadata + Hash": {
+      "main": [
+        [
+          {
+            "node": "Check Existing Hash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Existing Hash": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Dedup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Dedup": {
+      "main": [
+        [
+          {
+            "node": "IF Needs Processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Needs Processing": {
+      "main": [
+        [
+          {
+            "node": "Register Processing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Unchanged",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Unchanged": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Register Processing": {
+      "main": [
+        [
+          {
+            "node": "Restore Binary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone Upsert": {
+      "main": [
+        [
+          {
+            "node": "Mark Indexed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Indexed": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Upsert",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Pinecone Upsert",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Default Data Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Query In": {
+      "main": [
+        [
+          {
+            "node": "Parse + Hash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse + Hash": {
+      "main": [
+        [
+          {
+            "node": "Cache Lookup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cache Lookup": {
+      "main": [
+        [
+          {
+            "node": "IF Cache Hit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Cache Hit": {
+      "main": [
+        [
+          {
+            "node": "Increment Cache Hit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Classify Doc Types",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Increment Cache Hit": {
+      "main": [
+        [
+          {
+            "node": "Shape Cached Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape Cached Response": {
+      "main": [
+        [
+          {
+            "node": "Log Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Doc Types": {
+      "main": [
+        [
+          {
+            "node": "Parse Doc Types",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Doc Types": {
+      "main": [
+        [
+          {
+            "node": "Embed Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed Query": {
+      "main": [
+        [
+          {
+            "node": "Build Pinecone Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Pinecone Query": {
+      "main": [
+        [
+          {
+            "node": "Pinecone Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone Query": {
+      "main": [
+        [
+          {
+            "node": "Deduplicate Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplicate Chunks": {
+      "main": [
+        [
+          {
+            "node": "LLM Rerank",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM Rerank": {
+      "main": [
+        [
+          {
+            "node": "Build Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Context": {
+      "main": [
+        [
+          {
+            "node": "LLM Answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM Answer": {
+      "main": [
+        [
+          {
+            "node": "Validate Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Response": {
+      "main": [
+        [
+          {
+            "node": "Cache Write",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cache Write": {
+      "main": [
+        [
+          {
+            "node": "Log Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Query": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore Binary": {
+      "main": [
+        [
+          {
+            "node": "Pinecone Upsert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "01d6157d-e63c-4d29-93a1-9ebf81da38a1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "31b982100a331271c83d06ddebcbb18febfbf4d1010da2c1d658a491f4ffb41e"
+  },
+  "id": "vkv1plpqsdCst804",
+  "tags": []
+}
